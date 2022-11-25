@@ -1,0 +1,90 @@
+// Date and time functions using a DS3231 RTC connected via I2C and Wire lib
+#include "RTClib.h"
+
+
+#include "BluetoothSerial.h"
+#if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
+#error Bluetooth is not enabled! Please run `make menuconfig` to and enable it
+#endif
+
+#if !defined(CONFIG_BT_SPP_ENABLED)
+#error Serial Bluetooth not available or not enabled. It is only available for the ESP32 chip.
+#endif
+BluetoothSerial SerialBT;
+
+RTC_DS3231 rtc;
+
+char daysOfTheWeek[7][12] = {"Domingo", "Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado"};
+
+void setup () {
+  pinMode(2, OUTPUT);
+  pinMode(15, OUTPUT);
+  Serial.begin(57600);
+  SerialBT.begin("ESP32test"); //Bluetooth device name
+  Serial.println("The device started, now you can pair it with bluetooth!");
+
+#ifndef ESP8266
+  while (!Serial); // wait for serial port to connect. Needed for native USB
+#endif
+
+  if (! rtc.begin()) {
+    Serial.println("Couldn't find RTC");
+    Serial.flush();
+    abort();
+  }
+}
+
+void loop () {
+  DateTime now = rtc.now();
+  Serial.print(daysOfTheWeek[now.dayOfTheWeek()]);
+  Serial.print(" ");
+  Serial.print(now.day(), DEC);
+  Serial.print('/');
+  Serial.print(now.month(), DEC);
+  Serial.print('/');
+  Serial.print(now.year(), DEC);
+  Serial.print(" ");
+  Serial.print(now.hour(), DEC);
+  Serial.print(':');
+  Serial.print(now.minute(), DEC);
+  Serial.print(':');
+  Serial.print(now.second(), DEC);
+  Serial.println();
+
+  SerialBT.println(daysOfTheWeek[now.dayOfTheWeek()]);
+  SerialBT.println(now.day(), DEC);
+  SerialBT.println(now.month(), DEC);
+  SerialBT.println(now.year(), DEC);
+  SerialBT.println(now.hour(), DEC);
+  SerialBT.println(now.minute(), DEC);
+  SerialBT.println(now.second(), DEC);
+
+  if (Serial.available()) {
+    SerialBT.write(Serial.read());
+  }
+  if (SerialBT.available()) {
+    Serial.write(SerialBT.read());
+  }
+
+  if (now.month() > 2 && now.month() < 12 && now.dayOfTheWeek() > 0 && now.dayOfTheWeek() < 6) { //Marzo a Noviembre y de Lunes a Viernes
+    if (now.hour() == 8 && now.minute() == 0 && now.second() <= 3
+        || now.hour() == 9 && now.minute() == 20 && now.second() <= 3
+        || now.hour() == 9 && now.minute() == 30 && now.second() <= 3
+        || now.hour() == 10 && now.minute() == 50 && now.second() <= 3
+        || now.hour() == 11 && now.minute() == 0 && now.second() <= 3
+        || now.hour() == 12 && now.minute() == 20 && now.second() <= 3
+        || now.hour() == 13 && now.minute() == 0 && now.second() <= 3
+        || now.hour() == 14 && now.minute() == 15 && now.second() <= 3
+        || now.hour() == 14 && now.minute() == 20 && now.second() <= 3
+        || now.hour() == 15 && now.minute() == 35 && now.second() <= 3
+        || now.hour() == 15 && now.minute() == 40 && now.second() <= 3
+        || now.hour() == 16 && now.minute() == 30 && now.second() <= 3
+        || now.hour() == 16 && now.minute() == 55 && now.second() <= 3) {
+      digitalWrite(2, HIGH);
+    }
+    else {
+      digitalWrite(2, LOW);
+    }
+  }
+  delay(500);
+}
